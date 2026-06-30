@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Page {{ page }} · Scrape Movies</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f5f5f5; color: #333; }
+.header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #fff; padding: 24px 20px; text-align: center; }
+.header h1 { font-size: 24px; }
+.header p { color: #aaa; margin-top: 4px; }
+.nav { max-width: 1200px; margin: 20px auto; padding: 0 20px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.nav a { display: inline-block; padding: 6px 14px; border-radius: 6px; background: #fff; color: #333; text-decoration: none; font-size: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.nav a:hover { background: #1a73e8; color: #fff; }
+.nav a.active { background: #1a73e8; color: #fff; font-weight: 600; }
+.grid { max-width: 1200px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+.card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); transition: transform .2s; cursor: pointer; text-decoration: none; color: inherit; display: block; }
+.card:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+.card img { width: 100%; height: 300px; object-fit: cover; display: block; }
+.card-body { padding: 12px 14px 16px; }
+.card-body h3 { font-size: 15px; line-height: 1.4; margin-bottom: 6px; }
+.meta { font-size: 13px; color: #888; display: flex; justify-content: space-between; align-items: center; }
+.score { font-weight: 700; color: #fa0; font-size: 18px; }
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-right: 4px; }
+.badge-blue { background: #e8f0fe; color: #1a73e8; }
+.footer { text-align: center; padding: 24px; color: #aaa; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎬 Page {{ page }}</h1>
+  <p>共 {{ total }} 頁</p>
+</div>
+
+<div class="nav">
+  {% for p in range(1, total + 1) %}
+  <a href="/page/{{ p }}" class="{{ 'active' if p == page else '' }}">{{ p }}</a>
+  {% endfor %}
+</div>
+
+<div class="grid">
+{% for m in movies %}
+  <a class="card" href="/detail/{{ m.id }}">
+    <img src="/images/{{ m.id }}.jpg" alt="{{ m.name }}" loading="lazy">
+    <div class="card-body">
+      <h3>{{ m.name }}</h3>
+      <div style="margin-bottom:6px">
+        {% for c in m.categories[:3] %}
+        <span class="badge badge-blue">{{ c }}</span>
+        {% endfor %}
+      </div>
+      <div class="meta">
+        <span>{{ m.release or "—" }}</span>
+        <span class="score">{{ m.score }}</span>
+      </div>
+    </div>
+  </a>
+{% endfor %}
+</div>
+
+<div class="footer"><a href="/" style="color:#1a73e8">← 返回全部</a></div>
+</body>
+</html>

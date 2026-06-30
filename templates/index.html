@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrape Movies</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f5f5f5; color: #333; }
+.header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #fff; padding: 28px 20px 20px; text-align: center; }
+.header h1 { font-size: 26px; }
+.header p { color: #aaa; margin-top: 4px; font-size: 14px; }
+
+/* search */
+.search-box { max-width: 500px; margin: 14px auto 0; display: flex; gap: 0; }
+.search-box input { flex: 1; padding: 10px 16px; border: none; border-radius: 8px 0 0 8px; font-size: 14px; outline: none; }
+.search-box button { padding: 10px 20px; border: none; background: #e94560; color: #fff; border-radius: 0 8px 8px 0; font-size: 14px; cursor: pointer; }
+.search-box button:hover { background: #d63850; }
+
+/* categories */
+.cat-bar { max-width: 1000px; margin: 12px auto 0; padding: 0 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.cat-btn { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 13px; text-decoration: none; background: rgba(255,255,255,.12); color: #ccc; transition: .2s; }
+.cat-btn:hover { background: rgba(255,255,255,.25); color: #fff; }
+.cat-btn.active { background: #e94560; color: #fff; font-weight: 600; }
+
+/* result bar */
+.result-bar { max-width: 1200px; margin: 16px auto 0; padding: 0 20px; font-size: 14px; color: #888; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.result-bar a { color: #e94560; text-decoration: none; font-size: 13px; }
+.result-bar a:hover { text-decoration: underline; }
+
+.grid { max-width: 1200px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
+.card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); transition: transform .2s; cursor: pointer; text-decoration: none; color: inherit; display: block; }
+.card:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+.card img { width: 100%; height: 270px; object-fit: cover; display: block; }
+.card-body { padding: 10px 12px 14px; }
+.card-body h3 { font-size: 14px; line-height: 1.4; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.meta { font-size: 12px; color: #888; display: flex; justify-content: space-between; align-items: center; }
+.score { font-weight: 700; color: #fa0; font-size: 16px; }
+.badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; margin-right: 3px; margin-bottom: 3px; }
+.badge-blue { background: #e8f0fe; color: #1a73e8; }
+
+/* pagination */
+.pagination { max-width: 1200px; margin: 0 auto 30px; padding: 0 20px; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.pagination a { display: inline-block; padding: 6px 13px; border-radius: 6px; background: #fff; color: #333; text-decoration: none; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.pagination a:hover { background: #1a73e8; color: #fff; }
+.pagination a.active { background: #1a73e8; color: #fff; font-weight: 600; }
+.pagination a.disabled { opacity: .3; pointer-events: none; }
+
+.empty { text-align: center; padding: 60px 20px; color: #999; font-size: 15px; grid-column: 1 / -1; }
+.footer { text-align: center; padding: 24px; color: #aaa; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎬 Scrape Movies</h1>
+  <p>{{ total }} 部電影</p>
+  <form class="search-box" action="/" method="get">
+    <input type="text" name="q" placeholder="搜尋電影名稱、分類、產地…" value="{{ q }}" autocomplete="off">
+    <button type="submit">搜尋</button>
+  </form>
+  <div class="cat-bar">
+    <a class="cat-btn {{ 'active' if not cat else '' }}" href="/?{{ 'q=' + q|urlencode + '&' if q }}">全部</a>
+    {% for c in categories %}
+    <a class="cat-btn {{ 'active' if cat == c else '' }}" href="/?cat={{ c|urlencode }}{{ '&q=' + q|urlencode if q }}">{{ c }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if q or cat %}
+<div class="result-bar">
+  <span>
+    {% if q %}搜尋「<b>{{ q }}</b>」{% endif %}
+    {% if cat %}{% if q %} · {% endif %}分類「<b>{{ cat }}</b>」{% endif %}
+    — 共 {{ total }} 筆結果
+  </span>
+  <a href="/">清除篩選</a>
+</div>
+{% endif %}
+
+<div class="grid">
+{% for m in movies %}
+  <a class="card" href="/detail/{{ m.id }}">
+    <img src="/images/{{ m.id }}.jpg" alt="{{ m.name }}" loading="lazy">
+    <div class="card-body">
+      <h3>{{ m.name }}</h3>
+      <div>
+        {% for c in m.categories[:3] %}
+        <span class="badge badge-blue">{{ c }}</span>
+        {% endfor %}
+      </div>
+      <div class="meta" style="margin-top:5px">
+        <span>{{ m.release[:4] if m.release else "—" }}</span>
+        <span class="score">{{ m.score }}</span>
+      </div>
+    </div>
+  </a>
+{% else %}
+  <div class="empty">找不到符合條件的電影</div>
+{% endfor %}
+</div>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  <a class="{{ 'disabled' if page <= 1 }}" href="/?pg={{ page - 1 }}{{ '&q=' + q|urlencode if q }}{{ '&cat=' + cat|urlencode if cat }}">‹</a>
+  {% for p in range(1, total_pages + 1) %}
+  <a class="{{ 'active' if p == page }}" href="/?pg={{ p }}{{ '&q=' + q|urlencode if q }}{{ '&cat=' + cat|urlencode if cat }}">{{ p }}</a>
+  {% endfor %}
+  <a class="{{ 'disabled' if page >= total_pages }}" href="/?pg={{ page + 1 }}{{ '&q=' + q|urlencode if q }}{{ '&cat=' + cat|urlencode if cat }}">›</a>
+</div>
+{% endif %}
+
+<div class="footer">Scrape Center · SSR1</div>
+
+<!-- chatbot -->
+<div id="chat-bubble" onclick="toggleChat()">💬</div>
+<div id="chat-window">
+  <div id="chat-head">
+    <span>🎬 電影小幫手</span>
+    <span style="display:flex;gap:10px;align-items:center">
+      <span id="logout-btn" onclick="logout()" style="cursor:pointer;font-size:13px;display:none" title="登出">🚪</span>
+      <span onclick="toggleChat()" style="cursor:pointer;font-size:18px">✕</span>
+    </span>
+  </div>
+
+  <!-- login view -->
+  <div id="chat-login">
+    <div style="text-align:center;padding:20px 0 10px;font-size:15px;font-weight:600">🔒 請先登入</div>
+    <div style="padding:0 20px">
+      <input id="login-user" placeholder="帳號" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;outline:none">
+      <input id="login-pass" type="password" placeholder="密碼" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid #ddd;border-radius:6px;font-size:14px;outline:none">
+      <button onclick="login()" style="width:100%;padding:10px;background:#e94560;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">登入</button>
+      <div id="login-error" style="color:#e94560;font-size:13px;margin-top:8px;text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- chat view -->
+  <div id="chat-body" style="display:none;flex-direction:column;flex:1;min-height:0">
+    <div id="chat-msgs">
+      <div class="msg bot">👋 你好！問我電影相關問題！</div>
+    </div>
+    <div id="chat-input-wrap">
+      <input id="chat-input" placeholder="輸入問題..." onkeydown="if(event.key==='Enter') sendMsg()">
+      <button onclick="sendMsg()">送出</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleChat() {
+  const w = document.getElementById('chat-window');
+  const b = document.getElementById('chat-bubble');
+  if (w.style.display === 'flex') {
+    w.style.display = 'none';
+    b.style.display = 'flex';
+    return;
+  }
+  w.style.display = 'flex';
+  b.style.display = 'none';
+  if (getToken()) {
+    showChatView();
+    document.getElementById('chat-input').focus();
+  } else {
+    showLoginView();
+    document.getElementById('login-user').focus();
+  }
+}
+
+function getToken() {
+  return localStorage.getItem('chat_token');
+}
+
+function showLoginView() {
+  document.getElementById('chat-login').style.display = 'block';
+  document.getElementById('chat-body').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'none';
+}
+
+function showChatView() {
+  document.getElementById('chat-login').style.display = 'none';
+  document.getElementById('chat-body').style.display = 'flex';
+  document.getElementById('logout-btn').style.display = 'inline';
+}
+
+async function login() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value.trim();
+  const err = document.getElementById('login-error');
+  if (!user || !pass) { err.textContent = '請輸入帳號和密碼'; return; }
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: user, password: pass})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      localStorage.setItem('chat_token', d.token);
+      showChatView();
+      document.getElementById('chat-input').focus();
+    } else {
+      err.textContent = d.error || '登入失敗';
+    }
+  } catch {
+    err.textContent = '連線錯誤';
+  }
+}
+
+async function logout() {
+  const token = getToken();
+  if (token) {
+    await fetch('/api/logout', {headers: {'Authorization': 'Bearer ' + token}});
+  }
+  localStorage.removeItem('chat_token');
+  document.getElementById('chat-msgs').innerHTML = '<div class="msg bot">👋 你好！問我電影相關問題！</div>';
+  showLoginView();
+}
+
+function addMsg(text, role) {
+  const msgs = document.getElementById('chat-msgs');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.textContent = text;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('chat-msgs');
+  const d = document.createElement('div');
+  d.className = 'msg bot';
+  d.id = 'typing';
+  d.textContent = '思考中…';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+function sendMsg() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  const token = getToken();
+  if (!token) {
+    showLoginView();
+    return;
+  }
+  addMsg(text, 'user');
+  inp.value = '';
+  showTyping();
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({message: text})
+  })
+  .then(r => r.json())
+  .then(data => {
+    hideTyping();
+    if (data.reply) addMsg(data.reply, 'bot');
+  })
+  .catch(() => {
+    hideTyping();
+    addMsg('⚠️ 連線錯誤，請稍後再試', 'bot');
+  });
+}
+</script>
+
+<style>
+#chat-bubble {
+  position: fixed; bottom: 24px; right: 24px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #e94560; color: #fff; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 26px; cursor: pointer; z-index: 999;
+  box-shadow: 0 4px 16px rgba(233,69,96,.4); transition: transform .2s;
+}
+#chat-bubble:hover { transform: scale(1.1); }
+
+#chat-window {
+  position: fixed; bottom: 24px; right: 24px;
+  width: 360px; height: 480px; background: #fff;
+  border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.18);
+  display: none; flex-direction: column; z-index: 999;
+  overflow: hidden; font-size: 14px;
+}
+#chat-head {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  color: #fff; padding: 12px 16px; display: flex;
+  justify-content: space-between; align-items: center;
+  font-weight: 600;
+}
+#chat-msgs {
+  flex: 1; overflow-y: auto; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  background: #f8f9fa;
+}
+.msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; line-height: 1.6; white-space: pre-wrap; }
+.msg.bot { background: #e8f0fe; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.user { background: #e94560; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+#chat-input-wrap { display: flex; border-top: 1px solid #e0e0e0; }
+#chat-input-wrap input { flex: 1; padding: 12px; border: none; outline: none; font-size: 14px; }
+#chat-input-wrap button { padding: 12px 18px; border: none; background: #e94560; color: #fff; cursor: pointer; font-size: 14px; }
+#chat-input-wrap button:hover { background: #d63850; }
+#chat-login { flex: 1; display: flex; flex-direction: column; justify-content: center; background: #f8f9fa; }
+#chat-body { flex: 1; display: none; flex-direction: column; min-height: 0; }
+</style>
+</body>
+</html>
