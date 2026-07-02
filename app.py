@@ -4,17 +4,22 @@ import streamlit as st
 from pathlib import Path
 
 # ── Config ─────────────────────────────────────────────────────────
+DEEPSEEK_API_KEY = DEEPSEEK_BASE_URL = DEEPSEEK_MODEL = None
+USERS = {}
+
 if "deepseek" in st.secrets:
     DEEPSEEK_API_KEY = st.secrets["deepseek"]["api_key"]
     DEEPSEEK_BASE_URL = st.secrets["deepseek"]["base_url"]
     DEEPSEEK_MODEL = st.secrets["deepseek"]["model"]
     USERS = dict(st.secrets["users"])
 else:
-    cfg = json.loads(Path("config.json").read_text(encoding="utf-8"))
-    DEEPSEEK_API_KEY = cfg["deepseek"]["api_key"]
-    DEEPSEEK_BASE_URL = cfg["deepseek"]["base_url"]
-    DEEPSEEK_MODEL = cfg["deepseek"]["model"]
-    USERS = {u["username"]: u["password"] for u in cfg["users"]}
+    cfg_path = Path("config.json")
+    if cfg_path.exists():
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        DEEPSEEK_API_KEY = cfg["deepseek"]["api_key"]
+        DEEPSEEK_BASE_URL = cfg["deepseek"]["base_url"]
+        DEEPSEEK_MODEL = cfg["deepseek"]["model"]
+        USERS = {u["username"]: u["password"] for u in cfg["users"]}
 
 # ── Data ────────────────────────────────────────────────────────────
 @st.cache_data
